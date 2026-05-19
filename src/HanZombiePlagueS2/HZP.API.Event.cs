@@ -200,7 +200,7 @@ public partial class HanZombiePlagueAPI : IHanZombiePlagueAPI, IDisposable
             FixedZombieName = newClassName ?? string.Empty
         };
 
-        _zombieState.PlayerPreferences[slot] = config;
+        _zombieState.SetPlayerPreference(slot, config);
 
         if (isRandom)
         {

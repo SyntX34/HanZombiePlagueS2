@@ -65,17 +65,13 @@ public class HZPZombieClassMenu
         RandomButton.Click += async (_, args) =>
         {
             var clicker = args.Player;
+            if (!clicker.IsValid)
+                return;
 
-            _core.Scheduler.NextTick(() =>
-            {
-                if (!clicker.IsValid)
-                    return;
+            if (_api != null)
+                _api.NotifyUpdatePreferenceFromMenu(clicker.PlayerID, clicker.SteamID, null);
 
-                if (_api != null)
-                    _api.NotifyUpdatePreferenceFromMenu(clicker.PlayerID, clicker.SteamID, null);
-
-                clicker.SendMessage(MessageType.Chat, _helpers.T(player, "ZClassMenuRandomSelectInfo"));
-            });
+            clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ZClassMenuRandomSelectInfo"));
         };
 
         menu.AddOption(RandomButton);
@@ -99,19 +95,13 @@ public class HZPZombieClassMenu
                 Button.Click += async (_, args) =>
                 {
                     var clicker = args.Player;
+                    if (!clicker.IsValid)
+                        return;
 
-                    _core.Scheduler.NextTick(() =>
-                    {
-                        if (!clicker.IsValid)
-                            return;
+                    if (_api != null)
+                        _api.NotifyUpdatePreferenceFromMenu(clicker.PlayerID, clicker.SteamID, Cfg.Name);
 
-                        if (_api != null)
-                            _api.NotifyUpdatePreferenceFromMenu(clicker.PlayerID, clicker.SteamID, Cfg.Name);
-
-                        clicker.SendMessage(MessageType.Chat, $"{_helpers.T(player, "ZClassMenuSelectInfo")} {Cfg.Name}");
-
-                        
-                    });
+                    clicker.SendMessage(MessageType.Chat, $"{_helpers.T(clicker, "ZClassMenuSelectInfo")} {Cfg.Name}");
                 };
 
                 menu.AddOption(Button);

@@ -31,6 +31,22 @@ public class PlayerZombieState
         return PlayerZombieClass.TryGetValue(slot, out var className) ? className : null;
     }
 
+    public void ClearPlayerSlotState(int slot)
+    {
+        PlayerZombieClass.Remove(slot);
+        PlayerPreferences.Remove(slot);
+    }
+
+    public void ClearZombieClassState()
+    {
+        PlayerZombieClass.Clear();
+    }
+
+    public void ClearLocalPreferences()
+    {
+        PlayerPreferences.Clear();
+    }
+
     public void ClearSpecialAndSetPlayerZombie(IPlayer player, List<ZombieClass> classList, List<SpecialZombieClass> specialClassList)
     {
         if(player == null || !player.IsValid)

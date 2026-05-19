@@ -83,9 +83,7 @@ public partial class HZPEvents
         _core.Event.OnMapUnload += Event_OnMapUnload;
         _core.Event.OnWeaponServicesCanUseHook += Event_OnWeaponServicesCanUseHook;
         _core.Event.OnPrecacheResource += Event_OnPrecacheResource;
-        _core.Event.OnTick += Event_OnTickSpeed;
-
-        _core.Event.OnTick += Event_OnTickNoRecoil;
+        _core.Event.OnTick += Event_OnTick;
 
         _core.GameEvent.HookPre<EventWeaponFire>(OnHumanWeaponFire);
 
@@ -528,15 +526,15 @@ public partial class HZPEvents
     private HookResult OnPlayerDeath(EventPlayerDeath @event)
     {
         var player = @event.UserIdPlayer;
-        if(player == null || !player.IsValid)
+        if (player == null || !player.IsValid)
             return HookResult.Continue;
 
-        var Pawn = player.PlayerPawn;
-        if (Pawn == null || !Pawn.IsValid)
+        var pawn = player.PlayerPawn;
+        if (pawn == null || !pawn.IsValid)
             return HookResult.Continue;
 
-        var Controller = player.Controller;
-        if (Controller == null || !Controller.IsValid)
+        var controller = player.Controller;
+        if (controller == null || !controller.IsValid)
             return HookResult.Continue;
 
 
@@ -674,7 +672,7 @@ public partial class HZPEvents
     private HookResult OnPlayerHurtZombie(EventPlayerHurt @event)
     {
         var victim = @event.UserIdPlayer;
-        if(victim == null || !victim.IsValid)
+        if (victim == null || !victim.IsValid)
             return HookResult.Continue;
 
         var attackerId = @event.Attacker;
@@ -738,11 +736,7 @@ public partial class HZPEvents
         if (pawn == null || !pawn.IsValid)
             return;
 
-        var controller = pawn.Controller.Value?.As<CCSPlayerController>();
-        if (controller == null || !controller.IsValid)
-            return;
-
-        var player = _core.PlayerManager.GetPlayer((int)(controller.Index - 1));
+        var player = pawn.ToPlayer();
         if (player == null || !player.IsValid)
             return;
 
@@ -807,146 +801,38 @@ public partial class HZPEvents
 
     private sealed class DamageEventContext
     {
-        public DamageEventContext(CEntityInstance victimEntity)
+        public DamageEventContext(CEntityInstance victimEntity, CCSPlayerPawn victimPawn, IPlayer victimPlayer)
         {
             VictimEntity = victimEntity;
+            VictimPawn = victimPawn;
+            VictimPlayer = victimPlayer;
         }
 
         public CEntityInstance VictimEntity { get; }
-        public CCSPlayerPawn? VictimPawn { get; init; }
-        public IPlayer? VictimPlayer { get; init; }
-        public CEntityInstance? AttackerEntity { get; init; }
-        public CCSPlayerPawn? AttackerPawn { get; init; }
-        public IPlayer? AttackerPlayer { get; init; }
+        public CCSPlayerPawn VictimPawn { get; }
+        public IPlayer VictimPlayer { get; }
     }
 
-    private bool TryBuildDamageContext(IOnEntityTakeDamageEvent @event, out DamageEventContext? context)
+    private DamageEventContext? BuildDamageContext(IOnEntityTakeDamageEvent @event)
     {
-        context = null;
-
         var victimEntity = @event.Entity;
-        if (victimEntity == null || !victimEntity.IsValid)
-            return false;
-
-        var victimPawn = TryAsPlayerPawn(victimEntity);
-        var attackerEntity = TryGetEntityFromHandle(@event.Info.Attacker, out var resolvedAttacker) ? resolvedAttacker : null;
-        var attackerPawn = TryAsPlayerPawn(attackerEntity);
-
-        context = new DamageEventContext(victimEntity)
-        {
-            VictimPawn = victimPawn,
-            VictimPlayer = TryResolvePlayerFromPawn(victimPawn, out var victimPlayer) ? victimPlayer : null,
-            AttackerEntity = attackerEntity,
-            AttackerPawn = attackerPawn,
-            AttackerPlayer = TryResolvePlayerFromPawn(attackerPawn, out var attackerPlayer) ? attackerPlayer : null
-        };
-
-        return true;
-    }
-
-    private static CCSPlayerPawn? TryAsPlayerPawn(CEntityInstance? entity)
-    {
-        if (entity == null || !entity.IsValid)
+        if (victimEntity == null || !victimEntity.IsValid || !victimEntity.IsValidEntity)
             return null;
 
-        var pawn = entity.As<CCSPlayerPawn>();
-        if (pawn == null || !pawn.IsValid)
+        if (victimEntity is not CCSPlayerPawn victimPawn || !victimPawn.IsValid)
             return null;
 
-        return pawn;
-    }
+        var victimPlayer = victimPawn.ToPlayer();
+        if (victimPlayer == null || !victimPlayer.IsValid)
+            return null;
 
-    private bool TryResolvePlayerFromPawn(CCSPlayerPawn? pawn, out IPlayer player)
-    {
-        player = null!;
-        if (pawn == null || !pawn.IsValid)
-            return false;
-
-        var resolvedPlayer = _core.PlayerManager.GetPlayerFromPawn(pawn);
-        if (resolvedPlayer != null && resolvedPlayer.IsValid)
-        {
-            player = resolvedPlayer;
-            return true;
-        }
-
-        if (!TryGetControllerFromPawn(pawn, out var controller))
-            return false;
-
-        resolvedPlayer = _core.PlayerManager.GetPlayer((int)(controller.Index - 1));
-        if (resolvedPlayer == null || !resolvedPlayer.IsValid)
-            return false;
-
-        player = resolvedPlayer;
-        return true;
-    }
-
-    private static bool TryGetControllerFromPawn(CCSPlayerPawn? pawn, out CCSPlayerController controller)
-    {
-        controller = null!;
-        if (pawn == null || !pawn.IsValid)
-            return false;
-
-        var controllerHandle = pawn.Controller;
-        if (!controllerHandle.IsValid)
-            return false;
-
-        var resolvedController = controllerHandle.Value?.As<CCSPlayerController>();
-        if (resolvedController == null || !resolvedController.IsValid)
-            return false;
-
-        controller = resolvedController;
-        return true;
-    }
-
-    private static bool TryGetEntityFromHandle<T>(CHandle<T> handle, out T entity)
-        where T : class, ISchemaClass<T>
-    {
-        entity = null!;
-        if (!handle.IsValid)
-            return false;
-
-        var resolvedEntity = handle.Value;
-        if (resolvedEntity == null)
-            return false;
-
-        if (resolvedEntity is not CEntityInstance nativeEntity)
-        {
-            entity = resolvedEntity;
-            return true;
-        }
-
-        if (!nativeEntity.IsValid)
-            return false;
-
-        entity = resolvedEntity;
-        return true;
-    }
-
-    private static bool TryGetActiveWeapon(CCSPlayerPawn? pawn, out CBasePlayerWeapon activeWeapon)
-    {
-        activeWeapon = null!;
-        if (pawn == null || !pawn.IsValid)
-            return false;
-
-        var weaponServices = pawn.WeaponServices;
-        if (weaponServices == null || !weaponServices.IsValid)
-            return false;
-
-        var activeWeaponHandle = weaponServices.ActiveWeapon;
-        if (!activeWeaponHandle.IsValid)
-            return false;
-
-        var resolvedWeapon = activeWeaponHandle.Value;
-        if (resolvedWeapon == null || !resolvedWeapon.IsValid)
-            return false;
-
-        activeWeapon = resolvedWeapon;
-        return true;
+        return new DamageEventContext(victimEntity, victimPawn, victimPlayer);
     }
 
     private void Event_OnEntityTakeDamage(SwiftlyS2.Shared.Events.IOnEntityTakeDamageEvent @event)
     {
-        if (!TryBuildDamageContext(@event, out var context) || context == null)
+        var context = BuildDamageContext(@event);
+        if (context == null)
             return;
 
         HandleBaseEntityTakeDamage(@event, context);
@@ -957,11 +843,19 @@ public partial class HZPEvents
 
     private void HandleBaseEntityTakeDamage(IOnEntityTakeDamageEvent @event, DamageEventContext context)
     {
-        var victimPlayer = context.VictimPlayer;
-        var attackerPlayer = context.AttackerPlayer;
-        if (victimPlayer == null || !victimPlayer.IsValid || attackerPlayer == null || !attackerPlayer.IsValid)
+        var attackerHandle = @event.Info.Attacker;
+        if (!attackerHandle.IsValid)
             return;
 
+        var attackerInstance = attackerHandle.Value!;
+        if (attackerInstance is not CCSPlayerPawn attackerPawn || !attackerPawn.IsValid)
+            return;
+
+        var attackerPlayer = attackerPawn.ToPlayer();
+        if (attackerPlayer == null || !attackerPlayer.IsValid)
+            return;
+
+        var victimPlayer = context.VictimPlayer;
         var victimId = victimPlayer.PlayerID;
         var attackerId = attackerPlayer.PlayerID;
 
@@ -1072,6 +966,12 @@ public partial class HZPEvents
         _helpers.RemoveGlow(id);
     }
 
+    private void Event_OnTick()
+    {
+        Event_OnTickSpeed();
+        Event_OnTickNoRecoil();
+    }
+
     private void Event_OnTickSpeed()
     {
         var allplayer = _core.PlayerManager.GetAlive();
@@ -1153,11 +1053,20 @@ public partial class HZPEvents
             if (pawn == null || !pawn.IsValid)
                 continue;
 
-            if (!TryGetActiveWeapon(pawn, out _))
+            var weaponServices = pawn.WeaponServices!;
+            if (!weaponServices.IsValid)
                 continue;
 
-            var AimPunchServices = pawn.AimPunchServices;
-            if (AimPunchServices == null || !AimPunchServices.IsValid)
+            var activeWeaponHandle = weaponServices.ActiveWeapon;
+            if (!activeWeaponHandle.IsValid)
+                continue;
+
+            var activeWeapon = activeWeaponHandle.Value!;
+            if (!activeWeapon.IsValid)
+                continue;
+
+            var AimPunchServices = pawn.AimPunchServices!;
+            if (!AimPunchServices.IsValid)
                 continue;
 
             bool changed = false;
@@ -1206,12 +1115,29 @@ public partial class HZPEvents
 
     private void HandleHumanTakeDamage(IOnEntityTakeDamageEvent @event, DamageEventContext context)
     {
-        var victimPlayer = context.VictimPlayer;
-        var attackerPlayer = context.AttackerPlayer;
-        if (victimPlayer == null || !victimPlayer.IsValid || attackerPlayer == null || !attackerPlayer.IsValid)
+        var attackerHandle = @event.Info.Attacker;
+        if (!attackerHandle.IsValid)
             return;
 
-        if (!TryGetActiveWeapon(context.AttackerPawn, out var activeWeapon))
+        var attackerInstance = attackerHandle.Value!;
+        if (attackerInstance is not CCSPlayerPawn attackerPawn || !attackerPawn.IsValid)
+            return;
+
+        var attackerPlayer = attackerPawn.ToPlayer();
+        if (attackerPlayer == null || !attackerPlayer.IsValid)
+            return;
+
+        var victimPlayer = context.VictimPlayer;
+        var weaponServices = attackerPawn.WeaponServices!;
+        if (!weaponServices.IsValid)
+            return;
+
+        var activeWeaponHandle = weaponServices.ActiveWeapon;
+        if (!activeWeaponHandle.IsValid)
+            return;
+
+        var activeWeapon = activeWeaponHandle.Value!;
+        if (!activeWeapon.IsValid)
             return;
 
         var attackerId = attackerPlayer.PlayerID;
@@ -1257,7 +1183,12 @@ public partial class HZPEvents
 
         //_logger.LogInformation($"Damage Info - Attacker: {attackerPlayer.Name}, Victim: {victimPlayer.Name}, AmmoType: {@event.Info.AmmoType}, IsHeadshot: {isheadshot}");
 
-        if (!TryGetEntityFromHandle(@event.Info.Inflictor, out var inflictor) || !inflictor.IsValidEntity)
+        var inflictorHandle = @event.Info.Inflictor;
+        if (!inflictorHandle.IsValid)
+            return;
+
+        var inflictor = inflictorHandle.Value!;
+        if (!inflictor.IsValid || !inflictor.IsValidEntity)
             return;
 
         string inflictorname = inflictor.DesignerName;
@@ -1294,7 +1225,16 @@ public partial class HZPEvents
 
         var CFG = _mainCFG.CurrentValue;
 
-        if (!TryGetActiveWeapon(pawn, out var activeWeapon))
+        var weaponServices = pawn.WeaponServices!;
+        if (!weaponServices.IsValid)
+            return HookResult.Continue;
+
+        var activeWeaponHandle = weaponServices.ActiveWeapon;
+        if (!activeWeaponHandle.IsValid)
+            return HookResult.Continue;
+
+        var activeWeapon = activeWeaponHandle.Value!;
+        if (!activeWeapon.IsValid)
             return HookResult.Continue;
 
         if(_helpers.CheckIsGrenade(activeWeapon))
@@ -1414,12 +1354,12 @@ public partial class HZPEvents
             return HookResult.Continue;
 
         var Thrower = @event.UserIdPlayer;
-        if(Thrower == null || !Thrower.IsValid)
+        if (Thrower == null || !Thrower.IsValid)
             return HookResult.Continue;
 
         var entityId = @event.EntityID;
         var entity = _core.EntitySystem.GetEntityByIndex<CHEGrenadeProjectile>((uint)entityId);
-        if (entity == null || !entity.IsValid)
+        if (entity == null || !entity.IsValid || !entity.IsValidEntity)
             return HookResult.Continue;
 
         var ThrowerId = Thrower.PlayerID;
@@ -1540,7 +1480,7 @@ public partial class HZPEvents
     private HookResult OnPlayerBlind(EventPlayerBlind @event)
     {
         var player = @event.UserIdPlayer;
-        if(player == null || !player.IsValid)
+        if (player == null || !player.IsValid)
             return HookResult.Continue;
 
         var pawn = player.PlayerPawn;
@@ -1555,7 +1495,7 @@ public partial class HZPEvents
     {
         var entityId = @event.EntityID;
         var entity = _core.EntitySystem.GetEntityByIndex<CFlashbangProjectile>((uint)entityId);
-        if (entity == null || !entity.IsValid)
+        if (entity == null || !entity.IsValid || !entity.IsValidEntity)
             return HookResult.Continue;
 
         var CFG = _mainCFG.CurrentValue;
@@ -1567,7 +1507,7 @@ public partial class HZPEvents
         SwiftlyS2.Shared.Natives.Vector position = new SwiftlyS2.Shared.Natives.Vector(@event.X, @event.Y, @event.Z);
 
         var light = _helpers.CreateLight(position, range, 255, 255, 255, 255, CFG.LightGrenadeSound);
-        if (light == null || !light.IsValid)
+        if (light == null || !light.IsValid || !light.IsValidEntity)
             return HookResult.Continue;
 
         var lightIndex = light.Index;
@@ -1584,7 +1524,7 @@ public partial class HZPEvents
     {
         var entityId = @event.EntityID;
         var entity = _core.EntitySystem.GetEntityByIndex<CSmokeGrenadeProjectile>((uint)entityId);
-        if (entity == null || !entity.IsValid)
+        if (entity == null || !entity.IsValid || !entity.IsValidEntity)
             return HookResult.Continue;
 
         var CFG = _mainCFG.CurrentValue;
@@ -1647,7 +1587,7 @@ public partial class HZPEvents
     {
         var entityId = @event.EntityID;
         var entity = _core.EntitySystem.GetEntityByIndex<CDecoyProjectile>((uint)entityId);
-        if (entity == null || !entity.IsValid)
+        if (entity == null || !entity.IsValid || !entity.IsValidEntity)
             return HookResult.Continue;
 
         var player = @event.UserIdPlayer;

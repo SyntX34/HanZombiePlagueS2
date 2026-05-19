@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared.Events;
 using SwiftlyS2.Shared.GameEventDefinitions;
 using SwiftlyS2.Shared.Misc;
+using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.SchemaDefinitions;
 
 
@@ -231,11 +232,28 @@ public partial class HZPEvents
 
     private void HandleEntityTakeSoundDamage(IOnEntityTakeDamageEvent @event, DamageEventContext context)
     {
-        var attackerPlayer = context.AttackerPlayer;
+        var attackerHandle = @event.Info.Attacker;
+        if (!attackerHandle.IsValid)
+            return;
+
+        var attackerInstance = attackerHandle.Value!;
+        if (attackerInstance is not CCSPlayerPawn attackerPawn || !attackerPawn.IsValid)
+            return;
+
+        var attackerPlayer = attackerPawn.ToPlayer();
         if (attackerPlayer == null || !attackerPlayer.IsValid)
             return;
 
-        if (!TryGetActiveWeapon(context.AttackerPawn, out var activeWeapon))
+        var weaponServices = attackerPawn.WeaponServices!;
+        if (!weaponServices.IsValid)
+            return;
+
+        var activeWeaponHandle = weaponServices.ActiveWeapon;
+        if (!activeWeaponHandle.IsValid)
+            return;
+
+        var activeWeapon = activeWeaponHandle.Value!;
+        if (!activeWeapon.IsValid)
             return;
 
         if (activeWeapon.DesignerName != "weapon_knife")
@@ -263,8 +281,6 @@ public partial class HZPEvents
     private void HandleInGrenadeDamage(IOnEntityTakeDamageEvent @event, DamageEventContext context)
     {
         var victimPlayer = context.VictimPlayer;
-        if (victimPlayer == null || !victimPlayer.IsValid)
-            return;
 
         var Id = victimPlayer.PlayerID;
         _globals.IsZombie.TryGetValue(Id, out bool IsZombie);

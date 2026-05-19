@@ -1020,7 +1020,7 @@ public partial class HZPHelpers
     public COmniLight? CreateLight(Vector position, float range, int ColorR, int ColorG, int ColorB, int ColorA, string sound)
     {
         var light = _core.EntitySystem.CreateEntity<COmniLight>();
-        if (light == null || !light.IsValid)
+        if (light == null || !light.IsValid || !light.IsValidEntity)
             return null;
 
         light.Enabled = true;

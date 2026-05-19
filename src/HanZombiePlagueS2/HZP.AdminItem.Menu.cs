@@ -63,56 +63,52 @@ public class HZPAdminItemMenu
         VaccineButton.Click += async (_, args) =>
         {
             var clicker = args.Player;
+            if (!clicker.IsValid)
+                return;
 
-            _core.Scheduler.NextTick(() =>
+            var Id = clicker.PlayerID;
+
+            _globals.IsAssassin.TryGetValue(Id, out bool IsAssassin);
+            _globals.IsNemesis.TryGetValue(Id, out bool IsNemesis);
+            _globals.IsZombie.TryGetValue(Id, out bool IsZombie);
+
+            if (IsAssassin || IsNemesis)
             {
-                if (!clicker.IsValid)
-                    return;
+                clicker.SendCenter(_helpers.T(clicker, "ItemTVaccineError"));
+                return;
+            }
 
-                var Id = clicker.PlayerID;
+            if (!IsZombie)
+                return;
 
-                _globals.IsAssassin.TryGetValue(Id, out bool IsAssassin);
-                _globals.IsNemesis.TryGetValue(Id, out bool IsNemesis);
-                _globals.IsZombie.TryGetValue(Id, out bool IsZombie);
+            _globals.IsHero.TryGetValue(Id, out bool IsHero);
+            _globals.IsSniper.TryGetValue(Id, out bool IsSniper);
+            _globals.IsSurvivor.TryGetValue(Id, out bool IsSurvivor);
 
-                if (IsAssassin || IsNemesis)
-                {
-                    clicker.SendCenter(_helpers.T(clicker, "ItemTVaccineError"));
-                    return;
-                }
+            int maxHealth;
+            if (IsHero)
+            {
+                maxHealth = CFG.Hero.HeroHealth;
+            }
+            else if (IsSniper)
+            {
+                maxHealth = CFG.Sniper.SniperHealth;
+            }
+            else if (IsSurvivor)
+            {
+                maxHealth = CFG.Survivor.SurvivorHealth;
+            }
+            else
+            {
+                maxHealth = CFG.HumanMaxHealth;
+            }
 
-                if(!IsZombie)
-                    return;
+            string Default = "characters/models/ctm_st6/ctm_st6_variante.vmdl";
+            string Custom = string.IsNullOrEmpty(CFG.HumandefaultModel) ? Default : CFG.HumandefaultModel;
 
-                _globals.IsHero.TryGetValue(Id, out bool IsHero);
-                _globals.IsSniper.TryGetValue(Id, out bool IsSniper);
-                _globals.IsSurvivor.TryGetValue(Id, out bool IsSurvivor);
-                
-                int maxHealth;
-                if (IsHero)
-                {
-                    maxHealth = CFG.Hero.HeroHealth;
-                }
-                else if (IsSniper)
-                {
-                    maxHealth = CFG.Sniper.SniperHealth;
-                }
-                else if (IsSurvivor)
-                {
-                    maxHealth = CFG.Survivor.SurvivorHealth;
-                }
-                else
-                {
-                    maxHealth = CFG.HumanMaxHealth;
-                }
-
-                string Default = "characters/models/ctm_st6/ctm_st6_variante.vmdl";
-                string Custom = string.IsNullOrEmpty(CFG.HumandefaultModel) ? Default : CFG.HumandefaultModel;
-
-                _helpers.TVaccine(clicker, maxHealth, CFG.HumanInitialSpeed, Custom, CFG.TVaccineSound, 1.0f);
-                clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemTVaccineSuccess"));
-                _core.PlayerManager.SendMessage(MessageType.Chat, _helpers.T(player, "ItemTVaccineSuccessToAll", clicker.Name));
-            });
+            _helpers.TVaccine(clicker, maxHealth, CFG.HumanInitialSpeed, Custom, CFG.TVaccineSound, 1.0f);
+            clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemTVaccineSuccess"));
+            _core.PlayerManager.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemTVaccineSuccessToAll", clicker.Name));
         };
 
         menu.AddOption(VaccineButton);
@@ -128,17 +124,13 @@ public class HZPAdminItemMenu
         TVirusButton.Click += async (_, args) =>
         {
             var clicker = args.Player;
+            if (!clicker.IsValid)
+                return;
 
-            _core.Scheduler.NextTick(() =>
-            {
-                if (!clicker.IsValid)
-                    return;
+            _services.SetPlayerZombie(clicker);
 
-                _services.SetPlayerZombie(clicker);
-
-                clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemTVirusSuccess"));
-                _core.PlayerManager.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemTVirusSuccess", clicker.Name));
-            });
+            clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemTVirusSuccess"));
+            _core.PlayerManager.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemTVirusSuccess", clicker.Name));
         };
 
         menu.AddOption(TVirusButton);
@@ -154,25 +146,21 @@ public class HZPAdminItemMenu
         TVirusGButton.Click += async (_, args) =>
         {
             var clicker = args.Player;
+            if (!clicker.IsValid)
+                return;
 
-            _core.Scheduler.NextTick(() =>
+            var Id = clicker.PlayerID;
+            _globals.IsZombie.TryGetValue(Id, out bool IsZombie);
+            if (!IsZombie)
             {
-                if (!clicker.IsValid)
-                    return;
+                clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemHumanCantUse"));
+                return;
+            }
 
-                var Id = clicker.PlayerID;
-                _globals.IsZombie.TryGetValue(Id, out bool IsZombie);
-                if (!IsZombie)
-                {
-                    clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemHumanCantUse"));
-                    return;
-                }
+            _helpers.TVirusGrenade(clicker);
 
-                _helpers.TVirusGrenade(clicker);
-
-                clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemTVirusGrenadeSuccess"));
-                _core.PlayerManager.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemTVirusGrenadeSuccessToAll", clicker.Name));
-            });
+            clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemTVirusGrenadeSuccess"));
+            _core.PlayerManager.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemTVirusGrenadeSuccessToAll", clicker.Name));
         };
 
         menu.AddOption(TVirusGButton);
@@ -188,31 +176,27 @@ public class HZPAdminItemMenu
         ScbaButton.Click += async (_, args) =>
         {
             var clicker = args.Player;
+            if (!clicker.IsValid)
+                return;
 
-            _core.Scheduler.NextTick(() =>
+            var Id = clicker.PlayerID;
+            _globals.IsZombie.TryGetValue(Id, out bool IsZombie);
+            if (IsZombie)
             {
-                if (!clicker.IsValid)
-                    return;
+                clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemZombieCantUse"));
+                return;
+            }
 
-                var Id = clicker.PlayerID;
-                _globals.IsZombie.TryGetValue(Id, out bool IsZombie);
-                if (IsZombie)
-                {
-                    player.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemZombieCantUse"));
-                    return;
-                }
+            _globals.ScbaSuit.TryGetValue(Id, out bool IsHaveScbaSuit);
+            if (IsHaveScbaSuit)
+            {
+                clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemSCBASuitAlready"));
+                return;
+            }
 
-                _globals.ScbaSuit.TryGetValue(Id, out bool IsHaveScbaSuit);
-                if (IsHaveScbaSuit)
-                {
-                    player.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemSCBASuitAlready"));
-                    return;
-                }
-
-                _helpers.GiveScbaSuit(clicker, CFG.ScbaSuitGetSound);
-                player.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemSCBASuitSuccess"));
-                _core.PlayerManager.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemSCBASuitSuccessToAll", clicker.Name));
-            });
+            _helpers.GiveScbaSuit(clicker, CFG.ScbaSuitGetSound);
+            clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemSCBASuitSuccess"));
+            _core.PlayerManager.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemSCBASuitSuccessToAll", clicker.Name));
         };
 
         menu.AddOption(ScbaButton);
@@ -228,26 +212,22 @@ public class HZPAdminItemMenu
         GodButton.Click += async (_, args) =>
         {
             var clicker = args.Player;
+            if (!clicker.IsValid)
+                return;
 
-            _core.Scheduler.NextTick(() =>
+            var Id = clicker.PlayerID;
+
+            _globals.GodState.TryGetValue(Id, out bool IsGodState);
+            if (IsGodState)
             {
-                if (!clicker.IsValid)
-                    return;
+                clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemGodModeAlready"));
+                return;
+            }
 
-                var Id = player.PlayerID;
-
-                _globals.GodState.TryGetValue(Id, out bool IsGodState);
-                if (IsGodState)
-                {
-                    player.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemGodModeAlready"));
-                    return;
-                }
-
-                float time = 20f;
-                _helpers.SetGodState(clicker, time);
-                player.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemGodModeSuccess", time));
-                _core.PlayerManager.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemGodModeSuccessToAll", clicker.Name, time));
-            });
+            float time = 20f;
+            _helpers.SetGodState(clicker, time);
+            clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemGodModeSuccess", time));
+            _core.PlayerManager.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemGodModeSuccessToAll", clicker.Name, time));
         };
 
         menu.AddOption(GodButton);
@@ -263,64 +243,56 @@ public class HZPAdminItemMenu
         HealthButton.Click += async (_, args) =>
         {
             var clicker = args.Player;
+            if (!clicker.IsValid)
+                return;
 
-            _core.Scheduler.NextTick(() =>
+            var Id = clicker.PlayerID;
+            _globals.IsZombie.TryGetValue(Id, out bool IsZombie);
+            if (IsZombie)
             {
-                if (!clicker.IsValid)
-                    return;
+                clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemZombieCantUse"));
+                return;
+            }
 
-                var Id = clicker.PlayerID;
-                _globals.IsZombie.TryGetValue(Id, out bool IsZombie);
-                if (IsZombie)
-                {
-                    clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemZombieCantUse"));
-                    return;
-                }
-                    
+            _globals.IsHero.TryGetValue(Id, out bool IsHero);
+            _globals.IsSniper.TryGetValue(Id, out bool IsSniper);
+            _globals.IsSurvivor.TryGetValue(Id, out bool IsSurvivor);
 
-                _globals.IsHero.TryGetValue(Id, out bool IsHero);
-                _globals.IsSniper.TryGetValue(Id, out bool IsSniper);
-                _globals.IsSurvivor.TryGetValue(Id, out bool IsSurvivor);
+            int maxHealth;
+            if (IsHero)
+            {
+                maxHealth = CFG.Hero.HeroHealth;
+            }
+            else if (IsSniper)
+            {
+                maxHealth = CFG.Sniper.SniperHealth;
+            }
+            else if (IsSurvivor)
+            {
+                maxHealth = CFG.Survivor.SurvivorHealth;
+            }
+            else
+            {
+                maxHealth = CFG.HumanMaxHealth;
+            }
 
+            int value = 200;
 
-                int maxHealth;
-                if (IsHero)
-                {
-                    maxHealth = CFG.Hero.HeroHealth;
-                }
-                else if (IsSniper)
-                {
-                    maxHealth = CFG.Sniper.SniperHealth;
-                }
-                else if (IsSurvivor)
-                {
-                    maxHealth = CFG.Survivor.SurvivorHealth;
-                }
-                else
-                {
-                    maxHealth = CFG.HumanMaxHealth;
-                }
+            var pawn = clicker.PlayerPawn;
+            if (pawn == null || !pawn.IsValid)
+                return;
 
-                int value = 200;
+            var currentHealth = pawn.Health;
+            if (currentHealth >= maxHealth)
+            {
+                clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemAddHelathMax", maxHealth));
+                return;
+            }
 
-                var pawn = clicker.PlayerPawn;
-                if (pawn == null || !pawn.IsValid)
-                    return;
+            _helpers.AddHealth(clicker, maxHealth, value, CFG.AddHealthSound);
 
-                var currentHealth = pawn.Health;
-                var newHealth = currentHealth + value;
-
-                if (currentHealth >= maxHealth)
-                {
-                    clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemAddHelathMax", maxHealth));
-                    return;
-                }
-
-                _helpers.AddHealth(clicker, maxHealth, value, CFG.AddHealthSound);
-
-                clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemAddHelathSuccess", value, pawn.Health, maxHealth));
-                _core.PlayerManager.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemAddHelathSuccessToAll", clicker.Name, value, maxHealth));
-            });
+            clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemAddHelathSuccess", value, pawn.Health, maxHealth));
+            _core.PlayerManager.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemAddHelathSuccessToAll", clicker.Name, value, maxHealth));
         };
 
         menu.AddOption(HealthButton);
@@ -336,34 +308,29 @@ public class HZPAdminItemMenu
         InfiniteAmmoButton.Click += async (_, args) =>
         {
             var clicker = args.Player;
+            if (!clicker.IsValid)
+                return;
 
-            _core.Scheduler.NextTick(() =>
+            var Id = clicker.PlayerID;
+            _globals.IsZombie.TryGetValue(Id, out bool IsZombie);
+            if (IsZombie)
             {
-                if (!clicker.IsValid)
-                    return;
+                clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemZombieCantUse"));
+                return;
+            }
 
-                var Id = clicker.PlayerID;
-                _globals.IsZombie.TryGetValue(Id, out bool IsZombie);
-                if (IsZombie)
-                {
-                    clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemZombieCantUse"));
-                    return;
-                }
+            _globals.InfiniteAmmoState.TryGetValue(Id, out bool IsInfiniteAmmoState);
+            if (IsInfiniteAmmoState)
+            {
+                clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemInfiniteAmmoAlready"));
+                return;
+            }
 
-                _globals.InfiniteAmmoState.TryGetValue(Id, out bool IsInfiniteAmmoState);
-                if (IsInfiniteAmmoState)
-                {
-                    clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemInfiniteAmmoAlready"));
-                    return;
-                }
+            float time = 20f;
+            _helpers.SetInfiniteAmmoState(clicker, time);
 
-                float time = 20f;
-                _helpers.SetInfiniteAmmoState(clicker, time);
-
-
-                clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemInfiniteAmmoSuccess", time));
-                _core.PlayerManager.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemInfiniteAmmoSuccessToAll", clicker.Name, time));
-            });
+            clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemInfiniteAmmoSuccess", time));
+            _core.PlayerManager.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemInfiniteAmmoSuccessToAll", clicker.Name, time));
         };
 
         menu.AddOption(InfiniteAmmoButton);
@@ -379,22 +346,19 @@ public class HZPAdminItemMenu
         FireGrenadeButton.Click += async (_, args) =>
         {
             var clicker = args.Player;
+            if (!clicker.IsValid)
+                return;
 
-            _core.Scheduler.NextTick(() =>
+            var Id = clicker.PlayerID;
+            _globals.IsZombie.TryGetValue(Id, out bool IsZombie);
+            if (IsZombie)
             {
-                if (!clicker.IsValid)
-                    return;
+                clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemZombieCantUse"));
+                return;
+            }
 
-                var Id = clicker.PlayerID;
-                _globals.IsZombie.TryGetValue(Id, out bool IsZombie);
-                if (IsZombie)
-                {
-                    clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemZombieCantUse"));
-                    return;
-                }
-                _helpers.GiveFireGrenade(clicker);
-                clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemFireGrenadeSuccess"));
-            });
+            _helpers.GiveFireGrenade(clicker);
+            clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemFireGrenadeSuccess"));
         };
 
         menu.AddOption(FireGrenadeButton);
@@ -410,22 +374,19 @@ public class HZPAdminItemMenu
         LightGrenadeButton.Click += async (_, args) =>
         {
             var clicker = args.Player;
+            if (!clicker.IsValid)
+                return;
 
-            _core.Scheduler.NextTick(() =>
+            var Id = clicker.PlayerID;
+            _globals.IsZombie.TryGetValue(Id, out bool IsZombie);
+            if (IsZombie)
             {
-                if (!clicker.IsValid)
-                    return;
+                clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemZombieCantUse"));
+                return;
+            }
 
-                var Id = clicker.PlayerID;
-                _globals.IsZombie.TryGetValue(Id, out bool IsZombie);
-                if (IsZombie)
-                {
-                    clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemZombieCantUse"));
-                    return;
-                }
-                _helpers.GiveLightGrenade(clicker);
-                clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemLightGrenadeSuccess"));
-            });
+            _helpers.GiveLightGrenade(clicker);
+            clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemLightGrenadeSuccess"));
         };
 
         menu.AddOption(LightGrenadeButton);
@@ -441,22 +402,19 @@ public class HZPAdminItemMenu
         FreezeGrenadeButton.Click += async (_, args) =>
         {
             var clicker = args.Player;
+            if (!clicker.IsValid)
+                return;
 
-            _core.Scheduler.NextTick(() =>
+            var Id = clicker.PlayerID;
+            _globals.IsZombie.TryGetValue(Id, out bool IsZombie);
+            if (IsZombie)
             {
-                if (!clicker.IsValid)
-                    return;
+                clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemZombieCantUse"));
+                return;
+            }
 
-                var Id = clicker.PlayerID;
-                _globals.IsZombie.TryGetValue(Id, out bool IsZombie);
-                if (IsZombie)
-                {
-                    clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemZombieCantUse"));
-                    return;
-                }
-                _helpers.GiveFreezeGrenade(clicker);
-                clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemFreezeGrenadeSuccess"));
-            });
+            _helpers.GiveFreezeGrenade(clicker);
+            clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemFreezeGrenadeSuccess"));
         };
 
         menu.AddOption(FreezeGrenadeButton);
@@ -472,22 +430,19 @@ public class HZPAdminItemMenu
         TeleprotGrenadeButton.Click += async (_, args) =>
         {
             var clicker = args.Player;
+            if (!clicker.IsValid)
+                return;
 
-            _core.Scheduler.NextTick(() =>
+            var Id = clicker.PlayerID;
+            _globals.IsZombie.TryGetValue(Id, out bool IsZombie);
+            if (IsZombie)
             {
-                if (!clicker.IsValid)
-                    return;
+                clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemZombieCantUse"));
+                return;
+            }
 
-                var Id = clicker.PlayerID;
-                _globals.IsZombie.TryGetValue(Id, out bool IsZombie);
-                if (IsZombie)
-                {
-                    clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemZombieCantUse"));
-                    return;
-                }
-                _helpers.GiveTeleprotGrenade(clicker);
-                clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemTeleportGrenadeSuccess"));
-            });
+            _helpers.GiveTeleprotGrenade(clicker);
+            clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemTeleportGrenadeSuccess"));
         };
 
         menu.AddOption(TeleprotGrenadeButton);
@@ -503,22 +458,19 @@ public class HZPAdminItemMenu
         IncGrenadeButton.Click += async (_, args) =>
         {
             var clicker = args.Player;
+            if (!clicker.IsValid)
+                return;
 
-            _core.Scheduler.NextTick(() =>
+            var Id = clicker.PlayerID;
+            _globals.IsZombie.TryGetValue(Id, out bool IsZombie);
+            if (IsZombie)
             {
-                if (!clicker.IsValid)
-                    return;
+                clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemZombieCantUse"));
+                return;
+            }
 
-                var Id = clicker.PlayerID;
-                _globals.IsZombie.TryGetValue(Id, out bool IsZombie);
-                if (IsZombie)
-                {
-                    clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemZombieCantUse"));
-                    return;
-                }
-                _helpers.GiveIncGrenade(clicker);
-                clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemIncGrenadeSuccess"));
-            });
+            _helpers.GiveIncGrenade(clicker);
+            clicker.SendMessage(MessageType.Chat, _helpers.T(clicker, "ItemIncGrenadeSuccess"));
         };
 
         menu.AddOption(IncGrenadeButton);
