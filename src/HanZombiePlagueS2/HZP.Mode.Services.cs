@@ -236,7 +236,15 @@ public partial class HZPServices
         if (zombieCount > 0)
         {
             var Assassin = allplayers[0];
-            SetupAssassin(Assassin);
+            var id = Assassin.PlayerID;
+            var sessionId = Assassin.SessionId;
+            var roundGeneration = _helpers.GetCurrentRoundGeneration();
+
+            _helpers.RunNextWorldUpdateForPlayer(id, sessionId, roundGeneration, (currentPlayer, _) =>
+            {
+                SetupAssassin(currentPlayer);
+            }, requireAlive: true);
+            
         }
 
         
