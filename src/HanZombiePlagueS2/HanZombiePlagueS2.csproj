@@ -8,12 +8,20 @@
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<PlatformTarget>x64</PlatformTarget>
 	</PropertyGroup>
+<ItemGroup>
+		<None Remove="HZPEvents.cs~RF10898a2.TMP" />
+	</ItemGroup>
 	<ItemGroup>
-	  <None Remove="HZPEvents.cs~RF10898a2.TMP" />
+		<Content Include="resources\translations\*.jsonc">
+			<CopyToOutputDirectory>PreserveLatest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="resources\exports\*.dll;resources\exports\*.pdb;resources\exports\*.xml">
+			<CopyToOutputDirectory>PreserveLatest</CopyToOutputDirectory>
+		</Content>
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="Mono.Cecil" Version="0.9.4" />
-		<PackageReference Include="SwiftlyS2.CS2" Version="*-*" />
+		<PackageReference Include="SwiftlyS2.CS2" Version="*" ExcludeAssets="runtime" PrivateAssets="all" />
 		<PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" Version="8.0.0" />
 		<ProjectReference Include="../IHanZombiePlagueAPI/IHanZombiePlagueAPI.csproj" />
 	</ItemGroup>
