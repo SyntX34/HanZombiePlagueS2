@@ -21,6 +21,7 @@ public class GameModeConfig
     public int Weight { get; set; } = 100;
     public bool EnableInfiniteClipMode { get; set; } = true;
     public bool ZombieCanReborn { get; set; } = true;
+    public bool ZombieRebornAsHuman { get; set; } = false;
     
 }
 

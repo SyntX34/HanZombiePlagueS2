@@ -136,6 +136,19 @@ public class HZPGameMode
         };
     }
 
+    // Only applies to NormalInfection/MultiInfection: Whether a zombie respawns as a human after being killed by a human.
+    public bool ZombieRebornAsHuman()
+    {
+        var config = _mainCFG.CurrentValue;
+
+        return CurrentMode switch
+        {
+            GameModeType.NormalInfection => config.NormalInfection.ZombieRebornAsHuman,
+            GameModeType.MultiInfection => config.MultiInfection.ZombieRebornAsHuman,
+            _ => false
+        };
+    }
+
     public bool InfiniteClipMode()
     {
         var mode = CurrentMode;

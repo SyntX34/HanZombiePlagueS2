@@ -562,22 +562,58 @@ public partial class HZPEvents
             return HookResult.Continue;
 
         _globals.IsZombie.TryGetValue(Id, out bool IsZombie);
-        if (IsZombie && _gameMode.CanZombieReborn())
+        if (IsZombie)
         {
-
-            var zombieClasses = _zombieClassCFG.CurrentValue.ZombieClassList;
-            var specialClasses = _SpecialClassCFG.CurrentValue.SpecialClassList;
-            _core.Scheduler.DelayBySeconds(1.0f, () =>
+            // 直接使用死亡事件自带的 Attacker 判定，避免用 TakeDamage 阶段留下的陈旧记录
+            // （例如先被人类打过一刀，后来自杀/跌落/被世界伤害致死却仍误判为人类击杀）
+            bool killedByHuman = false;
+            var attackerPlayer = _core.PlayerManager.GetPlayer(@event.Attacker);
+            if (attackerPlayer != null && attackerPlayer.IsValid && attackerPlayer.PlayerID != Id)
             {
-                if (!_helpers.TryResolveCurrentPlayer(Id, sessionId, roundGeneration, out var currentPlayer))
-                    return;
+                _globals.IsZombie.TryGetValue(attackerPlayer.PlayerID, out bool attackerIsZombie);
+                killedByHuman = !attackerIsZombie;
+            }
 
-                if (!_globals.IsZombie.TryGetValue(Id, out var stillZombie) || !stillZombie || !_gameMode.CanZombieReborn())
-                    return;
+            _globals.LastAttacker.Remove(Id);
 
-                _zombieState.ClearSpecialAndSetPlayerZombie(currentPlayer, zombieClasses, specialClasses);
-                currentPlayer.Respawn();
-            });
+            // 该分支不依赖 ZombieCanReborn：即使该模式默认僵尸死亡不复活，
+            // 只要是被人类击杀且开启了 ZombieRebornAsHuman，也会以人类身份重生。
+            // 自杀 / 被世界伤害杀死时 killedByHuman 恒为 false，会走下面的 CanZombieReborn 分支重生为僵尸。
+            bool rebornAsHuman = killedByHuman && _gameMode.ZombieRebornAsHuman();
+
+            if (rebornAsHuman)
+            {
+                _core.Scheduler.DelayBySeconds(1.0f, () =>
+                {
+                    if (!_helpers.TryResolveCurrentPlayer(Id, sessionId, roundGeneration, out var currentPlayer))
+                        return;
+
+                    if (!_globals.IsZombie.TryGetValue(Id, out var stillZombie) || !stillZombie)
+                        return;
+
+                    _globals.IsZombie[Id] = false;
+                    // posszombie() 会把僵尸切到 Team.T，这里重生为人类时必须切回 Team.CT，
+                    // 否则玩家会带着人类属性却仍停留在僵尸方队伍里
+                    currentPlayer.SwitchTeam(Team.CT);
+                    currentPlayer.Respawn();
+                });
+            }
+            else if (_gameMode.CanZombieReborn())
+            {
+                var zombieClasses = _zombieClassCFG.CurrentValue.ZombieClassList;
+                var specialClasses = _SpecialClassCFG.CurrentValue.SpecialClassList;
+                _core.Scheduler.DelayBySeconds(1.0f, () =>
+                {
+                    if (!_helpers.TryResolveCurrentPlayer(Id, sessionId, roundGeneration, out var currentPlayer))
+                        return;
+
+                    if (!_globals.IsZombie.TryGetValue(Id, out var stillZombie) || !stillZombie || !_gameMode.CanZombieReborn())
+                        return;
+
+                    _zombieState.ClearSpecialAndSetPlayerZombie(currentPlayer, zombieClasses, specialClasses);
+                    currentPlayer.Respawn();
+                });
+            }
         }
         if (!IsZombie && _gameMode.CanZombieReborn())
         {
@@ -898,6 +934,7 @@ public partial class HZPEvents
         }
         else if (!attackerIsZombie && victimIsZombie)
         {
+            _globals.LastAttacker[victimId] = attackerId;
             if (IsGodState)
             {
                 ctx.Params.Info.Damage = 0;
@@ -954,6 +991,7 @@ public partial class HZPEvents
         _globals.StopZombieTimers.Remove(id);
         _globals.g_IsInvisible.Remove(id);
         _globals.ThrowerIsZombie.Remove(id);
+        _globals.LastAttacker.Remove(id);
 
         _globals.InSwing[id] = false;
 

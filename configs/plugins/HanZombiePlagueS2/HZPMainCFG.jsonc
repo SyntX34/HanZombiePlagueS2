@@ -10,7 +10,8 @@
 		"MotherZombieCount": 1,
 		"Weight": 70,
 		"EnableInfiniteClipMode": false,
-		"ZombieCanReborn": false
+		"ZombieCanReborn": false,
+		"ZombieRebornAsHuman": true
 	},
 	"MultiInfection": 
 	{
@@ -20,7 +21,8 @@
 		"MotherZombieCount": 5,
 		"Weight": 70,
 		"EnableInfiniteClipMode": false,
-		"ZombieCanReborn": true
+		"ZombieCanReborn": true,
+		"ZombieRebornAsHuman": true
 	},
 	"Nemesis": 
 	{
